@@ -6,21 +6,12 @@ Mobile-Optimized UI for Android/iPhone
 ================================================================================
 
 Run with: streamlit run crypto_backtester_app.py
-
-Features:
-- Touch-friendly interface
-- Real-time backtesting
-- Interactive charts
-- Strategy builder with dropdowns
-- Multi-timeframe support
-- Parameter optimization
 """
 
 import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-import json
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -47,8 +38,6 @@ st.markdown("""
     }
     .positive { color: #00c853; font-weight: bold; }
     .negative { color: #ff1744; font-weight: bold; }
-    .trade-win { background: #e8f5e9; border-left: 4px solid #00c853; padding: 0.5rem; margin: 0.2rem 0; }
-    .trade-loss { background: #ffebee; border-left: 4px solid #ff1744; padding: 0.5rem; margin: 0.2rem 0; }
     @media (max-width: 768px) {
         .main { padding: 0.2rem; }
         h1 { font-size: 1.5rem !important; }
@@ -58,7 +47,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# DATA & INDICATORS (Same as desktop version)
+# DATA & INDICATORS
 # ============================================================
 
 class IndicatorLibrary:
@@ -355,16 +344,14 @@ class BacktestEngine:
         }
 
 # ============================================================
-# DATA GENERATION
+# DATA GENERATION (No caching - works on Streamlit Cloud)
 # ============================================================
 
-@st.cache_data
 def generate_data():
     """Generate synthetic crypto data"""
     np.random.seed(42)
     end = datetime(2026, 5, 15, 22, 0)
 
-    # 1h data
     dates_1h = pd.date_range(end-timedelta(days=90), periods=90*24, freq='1H')
     ret = np.random.normal(0.0001, 0.008, len(dates_1h))
     var = 0.008**2
@@ -379,7 +366,6 @@ def generate_data():
     vol = 1000 * (1 + 5*np.abs(ret)/np.std(ret)) * np.random.lognormal(0, 0.5, len(cl))
     df_1h = pd.DataFrame({'open': op, 'high': hi, 'low': lo, 'close': cl, 'volume': vol}, index=dates_1h)
 
-    # 4h and 1d
     df_4h = df_1h.resample('4H').agg({'open':'first','high':'max','low':'min','close':'last','volume':'sum'}).dropna()
     df_1d = df_1h.resample('1D').agg({'open':'first','high':'max','low':'min','close':'last','volume':'sum'}).dropna()
 
@@ -552,7 +538,6 @@ def main():
             display_df = trades_df[['entry_time', 'exit_time', 'pnl', 'pnl_pct', 'reason', 'duration_hours']].copy()
             display_df.columns = ['Entry', 'Exit', 'P&L ($)', 'P&L (%)', 'Reason', 'Hours']
 
-            # Color coding
             def highlight_pnl(val):
                 if isinstance(val, (int, float)):
                     return 'color: #00c853' if val > 0 else 'color: #ff1744'
@@ -561,7 +546,6 @@ def main():
             st.dataframe(display_df.style.applymap(highlight_pnl, subset=['P&L ($)', 'P&L (%)']),
                         use_container_width=True, height=300)
 
-            # Download
             csv = trades_df.to_csv(index=False)
             st.download_button("📥 Download Trades CSV", csv, "trades.csv", "text/csv")
 
